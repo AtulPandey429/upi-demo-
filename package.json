@@ -1,0 +1,21 @@
+{
+  "name": "upi-payment",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install && npm install --prefix frontend",
+    "build": "npm run build --prefix frontend",
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "dev:frontend": "npm run dev --prefix frontend"
+  },
+  "dependencies": {
+    "axios": "^1.16.1",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
