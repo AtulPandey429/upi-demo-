@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "install:all": "npm install && npm install --prefix frontend",
+    "install:all": "npm install && npm install --prefix frontend --legacy-peer-deps",
     "build": "npm run build --prefix frontend",
     "start": "node server.js",
     "dev": "nodemon server.js",
