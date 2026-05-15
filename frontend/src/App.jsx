@@ -17,10 +17,27 @@ function parseRedirect() {
   const status = params.get('status');
   const transactionId = params.get('transactionId');
   const code = params.get('code');
+  const amountRaw = params.get('amount');
+  const amount = amountRaw != null && amountRaw !== '' ? Number(amountRaw) : null;
+  const name = params.get('name') || null;
+  const upi = params.get('upi') || null;
   if (status === 'success' || status === 'failed') {
-    return { view: status, transactionId, code };
+    return { view: status, transactionId, code, amount, name, upi };
   }
-  return { view: 'form', transactionId: null, code: null };
+  return { view: 'form', transactionId: null, code: null, amount: null, name: null, upi: null };
+}
+
+function mergePayer(stored, url, api) {
+  const amount =
+    (api?.amountPaise != null ? api.amountPaise / 100 : null) ??
+    url?.amount ??
+    stored?.amount ??
+    null;
+  return {
+    name: api?.customerName || url?.name || stored?.name || null,
+    upi: api?.upiId || url?.upi || stored?.upi || null,
+    amount,
+  };
 }
 
 function copyText(text) {
@@ -46,7 +63,7 @@ function savePayer(txnId, data) {
 
 function ResultScreen({ type, transactionId, code, payer, onRetry, onDone, verifying }) {
   const isSuccess = type === 'success';
-  const amount = payer?.amount ?? 0;
+  const amount = payer?.amount != null ? payer.amount : null;
 
   return (
     <main className={`result-card result-${type}`}>
@@ -86,7 +103,7 @@ function ResultScreen({ type, transactionId, code, payer, onRetry, onDone, verif
         )}
         <div className="result-row">
           <span>Amount</span>
-          <strong>₹{Number(amount).toFixed(2)}</strong>
+          <strong>{amount != null ? `₹${Number(amount).toFixed(2)}` : '—'}</strong>
         </div>
         {transactionId && (
           <div className="result-row result-row-id">
@@ -135,7 +152,7 @@ function ResultScreen({ type, transactionId, code, payer, onRetry, onDone, verif
 
 function App() {
   const [name, setName] = useState('');
-  const [upi, setUpi] = useState('');
+  const [upi, setUpi] = useState('success@upi');
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -167,7 +184,7 @@ function App() {
   }, [clearUrl]);
 
   useEffect(() => {
-    const { view: v, transactionId: txn, code } = parseRedirect();
+    const { view: v, transactionId: txn, code, amount: urlAmount, name: urlName, upi: urlUpi } = parseRedirect();
     if (v === 'form') return;
 
     setView(v);
@@ -176,19 +193,16 @@ function App() {
     clearUrl();
 
     const stored = txn ? loadPayer(txn) : null;
-    if (stored) setPayer(stored);
+    const urlPayer = { amount: urlAmount, name: urlName, upi: urlUpi };
+    setPayer(mergePayer(stored, urlPayer, null));
 
-    if (txn && v === 'success') {
+    if (txn) {
       setVerifying(true);
       axios
         .get(`${API}/api/payments/status/${txn}`)
         .then(({ data }) => {
           if (data.status === 'failed') setView('failed');
-          setPayer({
-            name: data.customerName || stored?.name,
-            upi: data.upiId || stored?.upi,
-            amount: data.amountPaise ? data.amountPaise / 100 : stored?.amount,
-          });
+          setPayer(mergePayer(stored, urlPayer, data));
         })
         .catch(() => {})
         .finally(() => setVerifying(false));
@@ -337,7 +351,7 @@ function App() {
               id="upi"
               className="field-input"
               type="text"
-              placeholder="rahul@paytm"
+              placeholder="success@upi"
               value={upi}
               onChange={(e) => setUpi(e.target.value)}
               autoComplete="off"
@@ -387,7 +401,7 @@ function App() {
         <p>
           {isResult
             ? 'Need help? Share your transaction ID with support.'
-            : 'Sandbox: use PhonePe simulator or GPay/Paytm for test payments.'}
+            : 'Sandbox: use VPA success@upi in PhonePe simulator for test payments.'}
         </p>
       </footer>
     </div>

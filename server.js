@@ -159,7 +159,11 @@ app.post('/api/payments/initiate', async (req, res) => {
 app.get('/api/payments/status/:id', (req, res) => {
   const p = payments.get(req.params.id);
   if (!p) return res.status(404).json({ success: false, message: 'Not found' });
-  res.json({ success: true, ...p });
+  res.json({
+    success: true,
+    ...p,
+    amountRupee: p.amountPaise / 100,
+  });
 });
 
 function webhook(req, res) {
@@ -191,23 +195,35 @@ function webhook(req, res) {
   }
 }
 
+function redirectQueryParams(p, payload, ok) {
+  return {
+    status: ok ? 'success' : 'failed',
+    transactionId: p.transactionId,
+    code: payload.code,
+    amount: (p.amountPaise / 100).toFixed(2),
+    name: p.customerName,
+    upi: p.upiId,
+  };
+}
+
 function redirect(req, res) {
   const payload = { ...req.query, ...req.body };
   log('redirect', payload);
-  const p = payload.merchantTransactionId
-    ? [...payments.values()].find((x) => x.providerOrderId === payload.merchantTransactionId)
-    : null;
+  const mtxn = payload.merchantTransactionId || payload.transactionId;
+  const p = mtxn ? payments.get(mtxn) || [...payments.values()].find((x) => x.providerOrderId === mtxn) : null;
 
-  if (!p) return res.redirect(appendQuery(`${publicBaseUrl}/`, { status: isSuccess(payload.code) ? 'success' : 'failed', code: payload.code }));
+  if (!p) {
+    return res.redirect(appendQuery(`${publicBaseUrl}/`, {
+      status: isSuccess(payload.code) ? 'success' : 'failed',
+      code: payload.code,
+      ...(mtxn && { transactionId: mtxn }),
+    }));
+  }
 
   const st = mapStatus(payload.code);
   if (p.status !== 'paid') { p.status = st; payments.set(p.transactionId, p); }
   const ok = st === 'paid' || isSuccess(payload.code);
-  res.redirect(appendQuery(ok ? p.successUrl : p.failureUrl, {
-    status: ok ? 'success' : 'failed',
-    transactionId: p.transactionId,
-    code: payload.code,
-  }));
+  res.redirect(appendQuery(ok ? p.successUrl : p.failureUrl, redirectQueryParams(p, payload, ok)));
 }
 
 app.post('/api/webhooks/phonepe', webhook);
