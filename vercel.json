@@ -2,12 +2,13 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm run build",
   "installCommand": "npm run install:all",
-  "outputDirectory": "frontend/dist",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/server.js" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/(.*)", "destination": "/server.js" }
   ],
   "functions": {
-    "server.js": { "maxDuration": 30 }
+    "server.js": {
+      "maxDuration": 30,
+      "includeFiles": "frontend/dist/**"
+    }
   }
 }
