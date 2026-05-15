@@ -96,12 +96,13 @@ async function phonepePay(txnId, amountPaise, mobile, os) {
 
 // --- express app ---
 const app = express();
-const dist = path.join(__dirname, 'frontend/dist');
+const isVercel = Boolean(process.env.VERCEL);
+const dist = path.join(__dirname, isVercel ? 'public' : 'frontend/dist');
 
 app.use(cors({ origin: corsOrigins.length ? corsOrigins : true, credentials: true }));
 app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
-app.use(express.static(dist));
+if (!isVercel) app.use(express.static(dist));
 
 app.post('/api/payments/initiate', async (req, res) => {
   try {
@@ -218,10 +219,12 @@ app.get('/health', (_req, res) => {
   res.json({ ok: true, configured: phonepe.isConfigured, webhook: phonepe.webhookUrl, redirect: phonepe.redirectUrl });
 });
 
-app.use((req, res, next) => {
-  if (req.path.startsWith('/api')) return next();
-  res.sendFile(path.join(dist, 'index.html'));
-});
+if (!isVercel) {
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api')) return next();
+    res.sendFile(path.join(dist, 'index.html'));
+  });
+}
 
 if (require.main === module) {
   app.listen(PORT, () => {

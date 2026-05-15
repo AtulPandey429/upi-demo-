@@ -1,14 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
   "buildCommand": "npm run build",
-  "installCommand": "npm run install:all",
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/server.js" }
-  ],
-  "functions": {
-    "server.js": {
-      "maxDuration": 30,
-      "includeFiles": "frontend/dist/**"
-    }
-  }
+  "installCommand": "npm run install:all"
 }
